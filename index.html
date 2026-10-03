@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff"><title>Portuguese Verb Trainer</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#f5f7f6}
+*{box-sizing:border-box}body{margin:0}.app{max-width:680px;margin:auto;min-height:100vh;padding:18px 16px 42px}
+h1{font-size:1.65rem;margin:.25rem 0}.sub,.muted{color:#667085}.sub{margin:0 0 16px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 3px 18px #00000012;margin:14px 0}
+button,input,select{font:inherit}button{border:0;border-radius:13px;padding:13px 14px;font-weight:750;cursor:pointer}.primary{background:#176b4d;color:#fff}.secondary{background:#e9f4ef;color:#155b43}.ghost{background:#f3f4f6;color:#344054}
+.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}label{font-size:.82rem;font-weight:700;display:block;margin:0 0 5px}
+select,input{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:12px;background:#fff}.tabs{display:flex;gap:7px}.tabs button{flex:1;padding:11px 7px}.active{outline:2px solid #176b4d}
+.stats{display:flex;gap:7px}.stat{flex:1;text-align:center;background:#fff;padding:9px 4px;border-radius:12px;box-shadow:0 2px 8px #0000000b}.stat b{display:block;font-size:1.12rem}
+.big{font-size:1.65rem;font-weight:800;margin:9px 0}.choice{display:block;width:100%;text-align:left;background:#f4f6f5;margin:8px 0}.choice.correct{background:#d9f5e6}.choice.wrong{background:#fde2e2}
+.feedback{font-weight:750;min-height:28px;margin-top:10px}.teach{margin-top:10px;padding:11px 12px;border-radius:12px;background:#f6f8f7;font-size:.9rem;line-height:1.45;color:#475467}.teach b{color:#344054}.good{color:#137a4b}.bad{color:#b42318}.hidden{display:none!important}
+.progress{height:10px;background:#e7e9e8;border-radius:20px;overflow:hidden}.bar{height:100%;background:#176b4d;border-radius:20px}.levelgrid{display:grid;grid-template-columns:1fr;gap:9px}
+.level{border:1px solid #e4e7ec;border-radius:14px;padding:13px;background:#fff}.level.current{border:2px solid #176b4d}.level.locked{opacity:.52}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#e9f4ef;color:#155b43;font-size:.75rem;font-weight:750}
+.mastery{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.mastery div{text-align:center;padding:8px 2px;border-radius:9px;background:#f5f6f6;font-size:.73rem}.mastery b{display:block;font-size:1rem}
+table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:7px 4px;border-bottom:1px solid #eee;text-align:left}.footer{text-align:center;color:#98a2b3;font-size:.76rem;margin-top:20px}
+.sessionHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.tiny{font-size:.78rem}.sectiontitle{margin:2px 0 6px}.sentence{font-size:1.15rem;line-height:1.5;margin:10px 0}
+</style></head>
+<body><main class="app">
+<h1>🇵🇹 Portuguese Verb Trainer</h1><p class="sub">European Portuguese • progressive practice & grammar coaching</p>
+<div class="tabs">
+<button id="homeTab" class="secondary active" onclick="showTab('home')">Home</button>
+<button id="practiceTab" class="secondary" onclick="showTab('practice')">Free Practice</button>
+<button id="learnTab" class="secondary" onclick="showTab('learn')">Learn</button>
+</div>
+
+<section id="home">
+<div class="card">
+<div class="sessionHead"><div><span class="pill">Your course</span><h2 class="sectiontitle" id="levelTitle"></h2></div><b id="coursePct"></b></div>
+<div class="progress"><div id="courseBar" class="bar"></div></div>
+<p class="muted" id="levelDesc"></p>
+<button class="primary" style="width:100%" onclick="startDaily()">▶ Daily Practice — 15 questions</button>
+<button class="secondary" style="width:100%;margin-top:8px" onclick="startLevel()">Practise current level</button>
+</div>
+<div class="card">
+<h3 style="margin-top:0">Mastery</h3>
+<div class="mastery"><div><b id="mNew">0</b>New</div><div><b id="mLearning">0</b>Learning</div><div><b id="mFamiliar">0</b>Familiar</div><div><b id="mMastered">0</b>Mastered</div></div>
+<p class="muted tiny">Correct answers build mastery. Errors make that exact verb + tense + person appear more often.</p>
+</div>
+<div class="card"><h3 style="margin-top:0">Learning path</h3><div id="levelGrid" class="levelgrid"></div></div>
+</section>
+
+<section id="quiz" class="hidden">
+<div class="stats"><div class="stat"><b id="qProgress">1/15</b>Question</div><div class="stat"><b id="qCorrect">0</b>Correct</div><div class="stat"><b id="qScore">—</b>Score</div></div>
+<div class="card">
+<div id="promptMeta" class="muted"></div><div id="questionLabel">Conjugate:</div>
+<div id="simplePrompt" class="big"><span id="verb"></span> → <span id="person"></span></div>
+<div id="sentencePrompt" class="sentence hidden"></div><div id="verbMeaning" class="muted" style="margin:-2px 0 12px;font-size:.95rem"></div>
+<div id="choices"></div><div id="typeArea" class="hidden"><input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the verb…"><button class="primary" style="width:100%;margin-top:9px" onclick="checkTyped()">Check</button></div>
+<div id="feedback" class="feedback"></div><div id="translationNote" class="teach hidden" style="background:#eef6ff"></div><div id="conjugationNote" class="teach hidden"></div><div id="teachNote" class="teach hidden"></div><button id="next" class="primary hidden" style="width:100%" onclick="nextSessionQuestion()">Next question</button>
+</div><button class="ghost" style="width:100%" onclick="endSession()">End session</button>
+</section>
+
+<section id="practice" class="hidden">
+<div class="card"><div class="row"><div><label>Tense</label><select id="tense"><option value="present">Presente</option><option value="perfect">Pretérito Perfeito</option><option value="imperfect">Pretérito Imperfeito</option><option value="irFuture">Futuro: ir + infinitivo</option><option value="costumar">Costumar + infinitivo</option><option value="future">Futuro</option><option value="conditional">Condicional</option><option value="subjPresent">Presente do Conjuntivo</option><option value="personalInf">Infinitivo Pessoal</option><option value="mixed">Mixed</option></select></div>
+<div><label>Question type</label><select id="mode"><option value="mixed">Mixed</option><option value="choice">Multiple choice</option><option value="type">Type answer</option></select></div></div>
+<label style="margin-top:12px"><input id="irregulars" type="checkbox" checked style="width:auto"> Include irregular verbs</label>
+<button class="primary" style="width:100%;margin-top:12px" onclick="startFree()">Start free practice</button>
+<button class="secondary" style="width:100%;margin-top:8px" onclick="startMistakes()">Practise my weak forms</button></div>
+</section>
+
+<section id="learn" class="hidden">
+<div class="card"><h2 style="margin-top:0">What do the tenses mean?</h2><p class="muted">Tap any tense for a simple English explanation and examples.</p><div id="helpButtons" class="levelgrid"></div></div>
+<div class="card"><h2 style="margin-top:0">Common irregular verbs</h2><p class="muted">These occur constantly in everyday Portuguese and are worth recognising early.</p>
+<table><tr><th>Verb</th><th>Meaning / use</th></tr>
+<tr><td><b>ser</b></td><td>to be — identity, origin and inherent characteristics</td></tr>
+<tr><td><b>estar</b></td><td>to be — state, condition and location</td></tr>
+<tr><td><b>ter</b></td><td>to have</td></tr><tr><td><b>ir</b></td><td>to go — also used with an infinitive for the common future construction</td></tr>
+<tr><td><b>fazer</b></td><td>to do / make</td></tr><tr><td><b>poder</b></td><td>can / to be able to</td></tr><tr><td><b>querer</b></td><td>to want</td></tr></table>
+<p class="tiny muted">Irregular verbs have forms that do not always follow the standard -ar, -er or -ir patterns.</p></div>
+<div class="card"><h2 style="margin-top:0">Regular endings & constructions</h2><p class="muted">Use these tables as a quick pattern reminder.</p><div id="tables"></div></div>
+</section>
+<div id="helpModal" class="hidden" onclick="if(event.target===this)closeHelp()" style="position:fixed;inset:0;background:#0008;z-index:20;padding:18px;display:flex;align-items:center;justify-content:center">
+<div class="card" style="max-width:520px;width:100%;max-height:85vh;overflow:auto;margin:0">
+<div class="sessionHead"><h2 id="helpTitle" style="margin:0"></h2><button class="ghost" onclick="closeHelp()">✕</button></div>
+<p id="helpMeaning" style="line-height:1.55"></p><h4>English examples</h4><ul id="helpExamples" style="line-height:1.7"></ul>
+<h4>Portuguese example</h4><p id="helpPt" style="font-weight:700"></p>
+<button class="primary" style="width:100%" onclick="closeHelp()">Got it</button></div></div>
+<div class="footer">Version 8 • All progress stays on this device in your browser.</div>
+</main><script>
+const persons=["eu","tu","ele/ela/você","nós","vocês","eles/elas"];
+const regular=[
+["falar","ar"],["trabalhar","ar"],["estudar","ar"],["comprar","ar"],["morar","ar"],["viajar","ar"],["chegar","ar"],["perguntar","ar"],["ajudar","ar"],["gostar","ar"],
+["comer","er"],["beber","er"],["vender","er"],["aprender","er"],["correr","er"],["receber","er"],["viver","er"],
+["partir","ir"],["abrir","ir"],["decidir","ir"],["subir","ir"],["permitir","ir"]
+];
+const endings={
+present:{ar:["o","as","a","amos","am","am"],er:["o","es","e","emos","em","em"],ir:["o","es","e","imos","em","em"]},
+perfect:{ar:["ei","aste","ou","ámos","aram","aram"],er:["i","este","eu","emos","eram","eram"],ir:["i","iste","iu","imos","iram","iram"]},
+imperfect:{ar:["ava","avas","ava","ávamos","avam","avam"],er:["ia","ias","ia","íamos","iam","iam"],ir:["ia","ias","ia","íamos","iam","iam"]},
+future:{ar:["arei","arás","ará","aremos","arão","arão"],er:["erei","erás","erá","eremos","erão","erão"],ir:["irei","irás","irá","iremos","irão","irão"]},
+conditional:{ar:["aria","arias","aria","aríamos","ariam","ariam"],er:["eria","erias","eria","eríamos","eriam","eriam"],ir:["iria","irias","iria","iríamos","iriam","iriam"]}
+};
+const irr={
+ser:{
+present:["sou","és","é","somos","são","são"],perfect:["fui","foste","foi","fomos","foram","foram"],imperfect:["era","eras","era","éramos","eram","eram"],future:["serei","serás","será","seremos","serão","serão"],conditional:["seria","serias","seria","seríamos","seriam","seriam"]},
+estar:{
+present:["estou","estás","está","estamos","estão","estão"],perfect:["estive","estiveste","esteve","estivemos","estiveram","estiveram"],imperfect:["estava","estavas","estava","estávamos","estavam","estavam"],future:["estarei","estarás","estará","estaremos","estarão","estarão"],conditional:["estaria","estarias","estaria","estaríamos","estariam","estariam"]},
+ter:{
+present:["tenho","tens","tem","temos","têm","têm"],perfect:["tive","tiveste","teve","tivemos","tiveram","tiveram"],imperfect:["tinha","tinhas","tinha","tínhamos","tinham","tinham"],future:["terei","terás","terá","teremos","terão","terão"],conditional:["teria","terias","teria","teríamos","teriam","teriam"]},
+ir:{
+present:["vou","vais","vai","vamos","vão","vão"],perfect:["fui","foste","foi","fomos","foram","foram"],imperfect:["ia","ias","ia","íamos","iam","iam"],future:["irei","irás","irá","iremos","irão","irão"],conditional:["iria","irias","iria","iríamos","iriam","iriam"]},
+fazer:{
+present:["faço","fazes","faz","fazemos","fazem","fazem"],perfect:["fiz","fizeste","fez","fizemos","fizeram","fizeram"],imperfect:["fazia","fazias","fazia","fazíamos","faziam","faziam"],future:["farei","farás","fará","faremos","farão","farão"],conditional:["faria","farias","faria","faríamos","fariam","fariam"]},
+poder:{
+present:["posso","podes","pode","podemos","podem","podem"],perfect:["pude","pudeste","pôde","pudemos","puderam","puderam"],imperfect:["podia","podias","podia","podíamos","podiam","podiam"],future:["poderei","poderás","poderá","poderemos","poderão","poderão"],conditional:["poderia","poderias","poderia","poderíamos","poderiam","poderiam"]},
+querer:{
+present:["quero","queres","quer","queremos","querem","querem"],perfect:["quis","quiseste","quis","quisemos","quiseram","quiseram"],imperfect:["queria","querias","queria","queríamos","queriam","queriam"],future:["quererei","quererás","quererá","quereremos","quererão","quererão"],conditional:["quereria","quererias","quereria","quereríamos","quereriam","quereriam"]}
+};
+const tenseNames={present:"Presente",perfect:"Pretérito Perfeito",imperfect:"Pretérito Imperfeito",irFuture:"Futuro com ir + infinitivo",costumar:"Costumar + infinitivo",future:"Futuro",conditional:"Condicional",subjPresent:"Presente do Conjuntivo",personalInf:"Infinitivo Pessoal"};
+const extraEndings={
+subjPresent:{ar:["e","es","e","emos","em","em"],er:["a","as","a","amos","am","am"],ir:["a","as","a","amos","am","am"]},
+personalInf:{ar:["ar","ares","ar","armos","arem","arem"],er:["er","eres","er","ermos","erem","erem"],ir:["ir","ires","ir","irmos","irem","irem"]}
+};
+const extraIrr={
+ser:{subjPresent:["seja","sejas","seja","sejamos","sejam","sejam"],personalInf:["ser","seres","ser","sermos","serem","serem"]},
+estar:{subjPresent:["esteja","estejas","esteja","estejamos","estejam","estejam"],personalInf:["estar","estares","estar","estarmos","estarem","estarem"]},
+ter:{subjPresent:["tenha","tenhas","tenha","tenhamos","tenham","tenham"],personalInf:["ter","teres","ter","termos","terem","terem"]},
+ir:{subjPresent:["vá","vás","vá","vamos","vão","vão"],personalInf:["ir","ires","ir","irmos","irem","irem"]},
+fazer:{subjPresent:["faça","faças","faça","façamos","façam","façam"],personalInf:["fazer","fazeres","fazer","fazermos","fazerem","fazerem"]},
+poder:{subjPresent:["possa","possas","possa","possamos","possam","possam"],personalInf:["poder","poderes","poder","podermos","poderem","poderem"]},
+querer:{subjPresent:["queira","queiras","queira","queiramos","queiram","queiram"],personalInf:["querer","quereres","querer","querermos","quererem","quererem"]}
+};
+const tenseHelp={
+present:{title:"Presente",meaning:"The present tense. Use it for what is happening now, habitual actions, facts and general truths.",examples:["I work in Lisbon.","We usually eat at eight.","She speaks Portuguese."],pt:"Eu trabalho em Lisboa."},
+perfect:{title:"Pretérito Perfeito",meaning:"A completed action in the past. Think of something that happened and finished.",examples:["I ate breakfast.","We visited Lisbon yesterday.","They arrived at six."],pt:"Ontem, visitei Lisboa."},
+imperfect:{title:"Pretérito Imperfeito",meaning:"Used for ongoing, repeated or background situations in the past — what used to happen, or what was happening.",examples:["I used to live in London.","We always ate together.","It was raining when I left."],pt:"Quando era jovem, vivia em Londres."},
+future:{title:"Futuro",meaning:"The formal/simple future: what will happen. In everyday European Portuguese, ir + infinitive is also very common for future plans.",examples:["I will travel tomorrow.","They will arrive later.","We will speak about it."],pt:"Amanhã, viajarei para Lisboa."},
+conditional:{title:"Condicional",meaning:"Used for what would happen, often depending on a condition, and for some polite or hypothetical statements.",examples:["I would travel more if I had time.","We would buy the house.","Could you help me?"],pt:"Eu viajaria mais se tivesse tempo."},
+subjPresent:{title:"Presente do Conjuntivo",meaning:"Used when the action is not presented simply as a fact — for wishes, doubt, possibility, necessity, emotion and many expressions introduced by que.",examples:["I hope that he arrives early.","It is important that we speak.","Maybe they are at home."],pt:"Espero que ele chegue cedo."},
+personalInf:{title:"Infinitivo Pessoal",meaning:"A Portuguese infinitive that can change ending to show who is doing the action. It is especially useful when the infinitive has its own explicit or understood subject.",examples:["It is important for us to speak.","Before they leave, call me.","They came to Lisbon to visit me."],pt:"É importante nós falarmos."},
+irFuture:{title:"Futuro com ir + infinitivo",meaning:"A very common everyday way to talk about future plans, intentions and expected events. Conjugate ir in the present and follow it with the infinitive.",examples:["I am going to eat later.","We are going to travel tomorrow.","They are going to buy a house."],pt:"Amanhã, vamos viajar para Lisboa."},
+costumar:{title:"Costumar + infinitivo",meaning:"Use costumar followed by an infinitive for something a person usually or habitually does.",examples:["I usually eat at eight.","We usually travel in June.","They usually speak Portuguese at home."],pt:"Costumo comer às oito."}
+};
+
+const verbMeanings={
+falar:"to speak / talk",trabalhar:"to work",estudar:"to study",comprar:"to buy",morar:"to live / reside",
+viajar:"to travel",chegar:"to arrive",perguntar:"to ask",ajudar:"to help",gostar:"to like",
+comer:"to eat",beber:"to drink",vender:"to sell",aprender:"to learn",correr:"to run",
+receber:"to receive",viver:"to live",partir:"to leave / depart",abrir:"to open",decidir:"to decide",
+subir:"to go up / climb",permitir:"to allow / permit",ser:"to be (identity / inherent characteristic)",
+estar:"to be (state / location)",ter:"to have",ir:"to go",fazer:"to do / make",poder:"can / to be able to",
+querer:"to want"
+};
+const irPresent=["vou","vais","vai","vamos","vão","vão"];
+const costumarPresent=["costumo","costumas","costuma","costumamos","costumam","costumam"];
+function constructionForm(v,t,p){if(t==="irFuture")return irPresent[p]+" "+v;if(t==="costumar")return costumarPresent[p]+" "+v;return null;}
+const levels=[
+{n:1,title:"Present: regular patterns",desc:"Build the basic -ar, -er and -ir present-tense endings.",t:["present"],irr:false,typed:.25},
+{n:2,title:"Present: everyday verbs",desc:"Strengthen the present and introduce ser, estar, ter and ir.",t:["present"],irr:["ser","estar","ter","ir"],typed:.5},
+{n:3,title:"Pretérito Perfeito",desc:"Learn completed-past endings, then meet common irregular past forms.",t:["perfect"],irr:true,typed:.45},
+{n:4,title:"Pretérito Imperfeito",desc:"Practise habitual/background past forms and contrast them with the perfeito.",t:["imperfect","perfect"],irr:true,typed:.55},
+{n:5,title:"Everyday constructions",desc:"Practise ir + infinitive for the future and costumar + infinitive for habitual actions.",t:["irFuture","costumar"],irr:true,typed:.6},
+{n:6,title:"Future & Conditional",desc:"Add the formal/simple futuro and condicional while continuing earlier revision.",t:["future","conditional"],irr:true,typed:.6},
+{n:7,title:"Mixed everyday verbs",desc:"Mix the core tenses and everyday constructions.",t:["present","perfect","imperfect","irFuture","costumar","future","conditional"],irr:true,typed:.7},
+{n:8,title:"Presente do Conjuntivo",desc:"Practise wishes, doubt, possibility and common subjunctive triggers.",t:["subjPresent"],irr:true,typed:.65},
+{n:9,title:"Infinitivo Pessoal",desc:"Practise the personal infinitive and when its ending identifies the subject.",t:["personalInf"],irr:true,typed:.72}
+];
+const sentenceFrames={
+present:["Hoje, {p} ___ ({v}).","Normalmente, {p} ___ ({v}).","Todos os dias, {p} ___ ({v}).","Ao fim de semana, {p} ___ ({v})."],
+perfect:["Ontem, {p} ___ ({v}).","Na semana passada, {p} ___ ({v}).","Esta manhã, {p} ___ ({v}).","No sábado passado, {p} ___ ({v})."],
+imperfect:["Antigamente, {p} ___ ({v}).","Quando era mais novo, {p} ___ ({v}).","Naquela altura, {p} ___ ({v}) muitas vezes.","Todos os verões, {p} ___ ({v})."],
+future:["Amanhã, {p} ___ ({v}).","Na próxima semana, {p} ___ ({v}).","No próximo ano, {p} ___ ({v}).","Mais tarde, {p} ___ ({v})."],
+conditional:["Nessa situação, {p} ___ ({v}).","Com mais tempo, {p} ___ ({v}).","Se fosse possível, {p} ___ ({v}).","No teu lugar, {p} ___ ({v})."],
+subjPresent:["Espero que {p} ___ ({v}).","É importante que {p} ___ ({v}).","Talvez {p} ___ ({v}).","Quero que {p} ___ ({v})."],
+personalInf:["É importante {p} ___ ({v}).","Antes de {p} ___ ({v}), temos de falar.","Depois de {p} ___ ({v}), podemos sair.","Para {p} ___ ({v}), é preciso tempo."],
+irFuture:["Amanhã, {p} ___ ({v}).","Mais tarde, {p} ___ ({v}).","No próximo fim de semana, {p} ___ ({v}).","Daqui a pouco, {p} ___ ({v})."],
+costumar:["Normalmente, {p} ___ ({v}).","Ao fim de semana, {p} ___ ({v}).","Habitualmente, {p} ___ ({v}).","Durante a semana, {p} ___ ({v})."]
+};
+
+
+const englishSubjects=["I","you","he/she/you (formal)","we","you (plural)","they"];
+const englishBase={
+falar:"speak",trabalhar:"work",estudar:"study",comprar:"buy",morar:"live",viajar:"travel",chegar:"arrive",
+perguntar:"ask",ajudar:"help",gostar:"like",comer:"eat",beber:"drink",vender:"sell",aprender:"learn",
+correr:"run",receber:"receive",viver:"live",partir:"leave",abrir:"open",decidir:"decide",subir:"go up",
+permitir:"allow",ser:"be",estar:"be",ter:"have",ir:"go",fazer:"do / make",poder:"be able to",querer:"want"
+};
+const englishPast={
+falar:"spoke",trabalhar:"worked",estudar:"studied",comprar:"bought",morar:"lived",viajar:"travelled",chegar:"arrived",
+perguntar:"asked",ajudar:"helped",gostar:"liked",comer:"ate",beber:"drank",vender:"sold",aprender:"learned",
+correr:"ran",receber:"received",viver:"lived",partir:"left",abrir:"opened",decidir:"decided",subir:"went up",
+permitir:"allowed",ser:"was/were",estar:"was/were",ter:"had",ir:"went",fazer:"did / made",poder:"could",querer:"wanted"
+};
+function thirdPersonEnglish(v){
+ const b=englishBase[v];
+ if(v==="ser"||v==="estar")return "is";
+ if(v==="ter")return "has"; if(v==="ir")return "goes"; if(v==="fazer")return "does / makes";
+ if(v==="poder")return "can"; if(v==="querer")return "wants";
+ if(v==="estudar")return "studies"; if(v==="comprar")return "buys"; if(v==="chegar")return "arrives";
+ if(v==="gostar")return "likes"; if(v==="viver")return "lives"; if(v==="partir")return "leaves";
+ if(v==="decidir")return "decides"; if(v==="subir")return "goes up";
+ if(b.endsWith("y"))return b.slice(0,-1)+"ies";
+ if(/(s|sh|ch|x|o)$/.test(b))return b+"es";
+ return b+"s";
+}
+function englishTranslation(q){
+ let subj=englishSubjects[q.p],v=q.v,b=englishBase[v]||verbMeanings[v]||v;
+ if(q.t==="irFuture")return subj+" "+(q.p===0?"am":q.p===2?"is":"are")+" going to "+b;
+ if(q.t==="costumar")return subj+" usually "+(q.p===2?thirdPersonEnglish(v):b);
+ if(q.t==="present"){
+   if(v==="poder")return subj+" can";
+   if(v==="ser"||v==="estar")return subj+" "+(q.p===0?"am":(q.p===2?"is":"are"));
+   return subj+" "+(q.p===2?thirdPersonEnglish(v):b);
+ }
+ if(q.t==="perfect"){
+   if(v==="ser"||v==="estar")return subj+" "+(q.p===0||q.p===2?"was":"were");
+   return subj+" "+(englishPast[v]||b);
+ }
+ if(q.t==="imperfect"){
+   if(v==="ser"||v==="estar")return subj+" used to be / was";
+   if(v==="poder")return subj+" used to be able to / could";
+   return subj+" used to "+b+" / was "+b+"ing";
+ }
+ if(q.t==="future"){
+   if(v==="poder")return subj+" will be able to";
+   return subj+" will "+b;
+ }
+ if(q.t==="conditional"){
+   if(v==="poder")return subj+" would be able to";
+   return subj+" would "+b;
+ }
+ if(q.t==="subjPresent"){
+   if(v==="ser"||v==="estar")return "that "+subj.toLowerCase()+" "+(q.p===2?"is":"be");
+   if(v==="poder")return "that "+subj.toLowerCase()+" can / may be able to";
+   return "that "+subj.toLowerCase()+" "+b;
+ }
+ if(q.t==="personalInf"){
+   if(q.p===0)return "for me to "+b;
+   if(q.p===1)return "for you to "+b;
+   if(q.p===2)return "for him/her/you to "+b;
+   if(q.p===3)return "for us to "+b;
+   if(q.p===4)return "for you (plural) to "+b;
+   return "for them to "+b;
+ }
+ return subj+" "+b;
+}
+function portugueseAnswerPhrase(q){return persons[q.p]+" "+q.a}
+function conjugationReminder(q){
+ if(q.t==="irFuture"){let rows=persons.map((p,i)=>`<tr${i===q.p?' style="font-weight:800;background:#e9f4ef"':''}><td>${p}</td><td>${irPresent[i]} ${q.v}</td></tr>`).join("");return `<b>${q.v} — Futuro com ir + infinitivo</b><div class="tiny muted" style="margin:3px 0 7px">Conjugate ir; the main verb stays in the infinitive</div><table>${rows}</table>`;}
+ if(q.t==="costumar"){let rows=persons.map((p,i)=>`<tr${i===q.p?' style="font-weight:800;background:#e9f4ef"':''}><td>${p}</td><td>${costumarPresent[i]} ${q.v}</td></tr>`).join("");return `<b>${q.v} — Costumar + infinitivo</b><div class="tiny muted" style="margin:3px 0 7px">Conjugate costumar; the main verb stays in the infinitive</div><table>${rows}</table>`;}
+ let rows=persons.map((p,i)=>{
+   let f=form(q.v,q.t,i);
+   let strong=i===q.p?' style="font-weight:800;background:#e9f4ef"':'';
+   return `<tr${strong}><td>${p}</td><td>${f}</td></tr>`;
+ }).join("");
+ return `<b>${q.v} — ${tenseNames[q.t]}</b><div class="tiny muted" style="margin:3px 0 7px">Full conjugation reminder</div><table>${rows}</table>`;
+}
+const teaching={
+present:{
+why:"The presente is used for actions happening now, routines, facts and general situations.",
+clue:"Words such as hoje, normalmente and todos os dias often point to the present.",
+tip:"Think: “I do / I am doing” or “I usually do”."
+},
+perfect:{
+why:"The pretérito perfeito presents a past action as completed.",
+clue:"Ontem, esta manhã (when finished), no sábado passado and na semana passada are common clues.",
+tip:"Think: “I did” — a finished event."
+},
+imperfect:{
+why:"The pretérito imperfeito describes repeated, habitual, ongoing or background situations in the past.",
+clue:"Antigamente, naquela altura, todos os verões and descriptions of what used to happen often trigger it.",
+tip:"Think: “I used to do” or “I was doing”, rather than one completed event."
+},
+future:{
+why:"The futuro expresses what will happen. In everyday speech, Portuguese also very often uses ir + infinitive.",
+clue:"Amanhã, mais tarde, no próximo ano and na próxima semana naturally suggest future time.",
+tip:"Think: “I will do”."
+},
+conditional:{
+why:"The condicional expresses what would happen, especially in hypothetical situations or when something depends on a condition.",
+clue:"Phrases such as no teu lugar, com mais tempo and se fosse possível often create a hypothetical setting.",
+tip:"Think: “I would do”."
+},
+subjPresent:{
+why:"The presente do conjuntivo is used when the action is viewed through a wish, doubt, possibility, necessity, emotion or other non-factual attitude.",
+clue:"Expressions such as espero que, quero que, é importante que and talvez commonly require the conjuntivo.",
+tip:"Do not translate it as a separate English tense. English often uses an ordinary-looking verb where Portuguese requires the conjuntivo."
+},
+irFuture:{why:"European Portuguese very commonly uses the present of ir + an infinitive for a future plan, intention or expected event.",clue:"Amanhã, mais tarde, daqui a pouco and no próximo fim de semana are common clues.",tip:"Conjugate ir; keep the main verb in the infinitive: vou comer, vamos viajar, vão falar."},
+costumar:{why:"Costumar + infinitive describes what someone usually or habitually does.",clue:"Normalmente, habitualmente, ao fim de semana and durante a semana are useful clues.",tip:"Conjugate costumar; keep the main verb in the infinitive: costumo comer, costumamos viajar."},
+personalInf:{
+why:"The infinitivo pessoal lets an infinitive show who performs its action. It is especially useful when the infinitive has its own stated or clearly understood subject.",
+clue:"After expressions such as antes de, depois de, para and é importante, look at whether the infinitive has a distinct subject.",
+tip:"For nós and eles/vocês the ending is especially visible: e.g. falarmos, falarem."
+}
+};
+function endingLesson(q){
+ let v=q.v,t=q.t,p=q.p,answer=q.a;
+ if(t==="irFuture")return `Conjugate <b>ir</b> for <b>${persons[p]}</b> and keep <b>${v}</b> in the infinitive: <b>${answer}</b>.`;
+ if(t==="costumar")return `Conjugate <b>costumar</b> for <b>${persons[p]}</b> and keep <b>${v}</b> in the infinitive: <b>${answer}</b>.`;
+ let irregular = !!irr[v] || !!extraIrr[v];
+ let detail="";
+ if(!irregular){
+   let type=regular.find(r=>r[0]===v)[1], stem=v.slice(0,-2);
+   let src=(t==="subjPresent"||t==="personalInf")?extraEndings[t]:endings[t];
+   detail=`For <b>${v}</b>, take the stem <b>${stem}-</b> and use the ${type.toUpperCase()} ending <b>${src[type][p]}</b> for <b>${persons[p]}</b>: <b>${answer}</b>.`;
+ } else {
+   detail=`<b>${v}</b> is irregular in this form, so <b>${persons[p]}</b> gives <b>${answer}</b>. This one is worth learning as a whole form.`;
+ }
+ return detail;
+}
+function teachingNote(q,wasCorrect){
+ let x=teaching[q.t], intro=wasCorrect?"Why it works: ":"Why this answer? ";
+ return `<b>${intro}</b>${x.why}<br><br>${x.clue}<br><br>${endingLesson(q)}<br><br><b>Memory cue:</b> ${x.tip}`;
+}
+let state=JSON.parse(localStorage.getItem("ptTrainerV2")||'{"level":1,"mastery":{},"sessions":0}');
+let session=null,current=null;
+
+function key(v,t,p){return v+"|"+t+"|"+p}
+function saveState(){localStorage.setItem("ptTrainerV2",JSON.stringify(state))}
+function form(v,t,p){
+ let cf=constructionForm(v,t,p);if(cf)return cf;
+ if((t==="subjPresent"||t==="personalInf")&&extraIrr[v])return extraIrr[v][t][p];
+ if(t==="subjPresent"||t==="personalInf"){let x=regular.find(r=>r[0]===v),type=x[1],stem=v.slice(0,-2);return stem+extraEndings[t][type][p]}
+ if(irr[v])return irr[v][t][p];
+ let x=regular.find(r=>r[0]===v),type=x[1],stem=v.slice(0,-2);return stem+endings[t][type][p]
+}
+function allowedVerbs(lv){
+ let p=regular.map(x=>x[0]); if(lv.irr===true)p=p.concat(Object.keys(irr));else if(Array.isArray(lv.irr))p=p.concat(lv.irr);return p
+}
+function masteryValue(v,t,p){return state.mastery[key(v,t,p)]||0}
+function weightedPick(items,weightFn){let bag=[];items.forEach(x=>{let w=Math.max(1,weightFn(x));for(let i=0;i<w;i++)bag.push(x)});return bag[Math.floor(Math.random()*bag.length)]}
+function makeQuestion(lv,forceWeak=false){
+ let verbs=allowedVerbs(lv), candidates=[];
+ verbs.forEach(v=>lv.t.forEach(t=>persons.forEach((_,p)=>candidates.push({v,t,p}))));
+ let c=weightedPick(candidates,x=>{let m=masteryValue(x.v,x.t,x.p);return forceWeak?Math.max(1,6-m):Math.max(1,5-m)});
+ c.a=form(c.v,c.t,c.p);c.typed=Math.random()<lv.typed;
+ c.sentence=lv.n>=4&&Math.random()<(lv.n>=7?.72:.48);
+ return c;
+}
+function renderQuestion(){
+ current=session.questions[session.i];document.getElementById("feedback").textContent="";document.getElementById("feedback").className="feedback";document.getElementById("teachNote").innerHTML="";document.getElementById("teachNote").classList.add("hidden");document.getElementById("translationNote").innerHTML="";document.getElementById("translationNote").classList.add("hidden");document.getElementById("conjugationNote").innerHTML="";document.getElementById("conjugationNote").classList.add("hidden");document.getElementById("next").classList.add("hidden");
+ document.getElementById("qProgress").textContent=(session.i+1)+"/"+session.questions.length;document.getElementById("qCorrect").textContent=session.correct;document.getElementById("qScore").textContent=session.i?Math.round(session.correct/session.i*100)+"%":"—";
+ document.getElementById("promptMeta").textContent=tenseNames[current.t];document.getElementById("verb").textContent=current.v;document.getElementById("person").textContent=persons[current.p];document.getElementById("verbMeaning").innerHTML=`<b>${current.v}</b> — ${verbMeanings[current.v]||""}`;
+ let sp=document.getElementById("simplePrompt"),sent=document.getElementById("sentencePrompt");
+ if(current.sentence){sp.classList.add("hidden");sent.classList.remove("hidden");let fs=sentenceFrames[current.t],f=fs[Math.floor(Math.random()*fs.length)];sent.textContent=f.replace("{p}",persons[current.p]).replace("{v}",current.v)}
+ else{sp.classList.remove("hidden");sent.classList.add("hidden")}
+ let ca=document.getElementById("choices"),ta=document.getElementById("typeArea");ca.innerHTML="";ta.classList.add("hidden");
+ if(current.typed){ta.classList.remove("hidden");let a=document.getElementById("answer");a.value="";setTimeout(()=>a.focus(),50)}
+ else{let opts=new Set([current.a]);while(opts.size<4){let pp=Math.floor(Math.random()*6),tt=session.lv.t[Math.floor(Math.random()*session.lv.t.length)];opts.add(form(current.v,tt,pp))}[...opts].sort(()=>Math.random()-.5).forEach(o=>{let b=document.createElement("button");b.className="choice";b.textContent=o;b.onclick=()=>grade(o,b);ca.appendChild(b)})}
+}
+function grade(ans,btn){
+ if(!document.getElementById("next").classList.contains("hidden"))return;
+ let ok=ans.trim().toLocaleLowerCase("pt-PT")===current.a.toLocaleLowerCase("pt-PT"),k=key(current.v,current.t,current.p),m=state.mastery[k]||0;
+ if(ok){session.correct++;state.mastery[k]=Math.min(5,m+1);if(btn)btn.classList.add("correct");setFeedback("✓ Correct — "+current.a,true)}
+ else{state.mastery[k]=Math.max(0,m-1);if(btn)btn.classList.add("wrong");setFeedback("✗ Correct answer: "+current.a,false)}
+ saveState();
+ let tr=document.getElementById("translationNote");tr.innerHTML=`<b>${portugueseAnswerPhrase(current)}</b> &nbsp;→&nbsp; <b>${englishTranslation(current)}</b>`;tr.classList.remove("hidden");
+ let conj=document.getElementById("conjugationNote");conj.innerHTML=conjugationReminder(current);conj.classList.remove("hidden");
+ let note=document.getElementById("teachNote");note.innerHTML=teachingNote(current,ok);note.classList.remove("hidden");
+ document.querySelectorAll(".choice").forEach(b=>{b.disabled=true;if(b.textContent===current.a)b.classList.add("correct")});document.getElementById("next").classList.remove("hidden");
+}
+function checkTyped(){grade(document.getElementById("answer").value)}
+function setFeedback(s,ok){let f=document.getElementById("feedback");f.textContent=s;f.classList.add(ok?"good":"bad")}
+function nextSessionQuestion(){session.i++;if(session.i>=session.questions.length){finishSession();return}renderQuestion()}
+function beginSession(lv,count,kind){
+ session={lv,i:0,correct:0,kind,questions:[]};for(let i=0;i<count;i++)session.questions.push(makeQuestion(lv,kind==="daily"&&i%3===0));showTab("quiz");renderQuestion()
+}
+function startDaily(){let lv=levels[state.level-1];beginSession(lv,15,"daily")}
+function startLevel(){beginSession(levels[state.level-1],15,"level")}
+function practiseLevel(n){
+ if(n>state.level)return;
+ beginSession(levels[n-1],15,n===state.level?"level":"review");
+}
+function startFree(){
+ let tv=document.getElementById("tense").value,ts=tv==="mixed"?["present","perfect","imperfect","future","conditional","irFuture","costumar","subjPresent","personalInf"]:[tv],iv=document.getElementById("irregulars").checked;
+ let typed=document.getElementById("mode").value==="type"?1:document.getElementById("mode").value==="choice"?0:.5;
+ beginSession({n:6,t:ts,irr:iv,typed},20,"free")
+}
+function startMistakes(){
+ let weak=Object.entries(state.mastery).filter(([k,v])=>v<2);
+ if(!weak.length){alert("You don't have any recorded weak forms yet. Do a practice session first.");return}
+ let lv={n:6,t:["present","perfect","imperfect","future","conditional","subjPresent","personalInf"],irr:true,typed:.7};session={lv,i:0,correct:0,kind:"weak",questions:[]};
+ for(let i=0;i<15;i++){let [k]=weak[Math.floor(Math.random()*weak.length)],a=k.split("|"),q={v:a[0],t:a[1],p:+a[2],typed:Math.random()<.7,sentence:Math.random()<.3};q.a=form(q.v,q.t,q.p);session.questions.push(q)}showTab("quiz");renderQuestion()
+}
+function finishSession(){
+ let pct=Math.round(session.correct/session.questions.length*100);state.sessions++;
+ if((session.kind==="daily"||session.kind==="level")&&pct>=80&&state.level<levels.length){state.level++;saveState();alert("Session complete: "+pct+"%.\n\nGreat work — Level "+state.level+" is now your current level.")}
+ else{saveState();alert("Session complete: "+pct+"% ("+session.correct+"/"+session.questions.length+").")}
+ session=null;renderHome();showTab("home")
+}
+function endSession(){if(confirm("End this practice session?")){session=null;renderHome();showTab("home")}}
+function renderHome(){
+ let lv=levels[state.level-1];document.getElementById("levelTitle").textContent="Level "+lv.n+" — "+lv.title;document.getElementById("levelDesc").textContent=lv.desc;
+ let pct=Math.round((state.level-1)/levels.length*100);document.getElementById("coursePct").textContent=pct+"%";document.getElementById("courseBar").style.width=pct+"%";
+ let counts=[0,0,0,0];Object.values(state.mastery).forEach(v=>{if(v===0)counts[0]++;else if(v<=2)counts[1]++;else if(v<=4)counts[2]++;else counts[3]++});
+ ["mNew","mLearning","mFamiliar","mMastered"].forEach((id,i)=>document.getElementById(id).textContent=counts[i]);
+ document.getElementById("levelGrid").innerHTML=levels.map(l=>{
+ let locked=l.n>state.level;
+ let badge=l.n===state.level?'<span class="pill" style="margin-top:7px">Current level</span>':l.n<state.level?'<span class="pill" style="margin-top:7px">Tap to practise again</span>':'<span class="pill" style="margin-top:7px;background:#eee;color:#777">Locked</span>';
+ return `<div class="level ${l.n===state.level?"current":""} ${locked?"locked":""}" ${locked?"":`onclick="practiseLevel(${l.n})" style="cursor:pointer"`}><b>${l.n}. ${l.title}</b><div class="muted tiny">${l.desc}</div>${badge}</div>`;
+}).join("")
+}
+function showTab(x){["home","quiz","practice","learn"].forEach(id=>document.getElementById(id).classList.toggle("hidden",id!==x));["home","practice","learn"].forEach(id=>{let e=document.getElementById(id+"Tab");if(e)e.classList.toggle("active",id===x)})}
+function showHelp(t){let h=tenseHelp[t];document.getElementById("helpTitle").textContent=h.title;document.getElementById("helpMeaning").textContent=h.meaning;document.getElementById("helpExamples").innerHTML=h.examples.map(x=>"<li>"+x+"</li>").join("");document.getElementById("helpPt").textContent=h.pt;document.getElementById("helpModal").classList.remove("hidden")}
+function closeHelp(){document.getElementById("helpModal").classList.add("hidden")}
+function buildTables(){
+ document.getElementById("helpButtons").innerHTML=Object.keys(tenseHelp).map(t=>`<button class="secondary" onclick="showHelp('${t}')">${tenseHelp[t].title}<br><span class="tiny" style="font-weight:500">Tap for explanation</span></button>`).join("");
+ let out="";
+ Object.keys(tenseNames).forEach(t=>{
+   if(t==="irFuture"||t==="costumar"){let vals=t==="irFuture"?irPresent:costumarPresent;out+=`<h3>${tenseNames[t]} <button class="ghost tiny" onclick="showHelp('${t}')" style="padding:5px 8px">What is this?</button></h3><table><tr><th>Person</th><th>Pattern</th></tr>`;persons.forEach((p,i)=>out+=`<tr><td>${p}</td><td>${vals[i]} + infinitive</td></tr>`);out+="</table>";return;}
+   let source=(t==="subjPresent"||t==="personalInf")?extraEndings[t]:endings[t];
+   out+=`<h3>${tenseNames[t]} <button class="ghost tiny" onclick="showHelp('${t}')" style="padding:5px 8px">What is this?</button></h3><table><tr><th></th><th>-ar</th><th>-er</th><th>-ir</th></tr>`;
+   persons.forEach((p,i)=>out+=`<tr><td>${p}</td><td>${source.ar[i]}</td><td>${source.er[i]}</td><td>${source.ir[i]}</td></tr>`);
+   out+="</table>";
+ });document.getElementById("tables").innerHTML=out
+}
+document.getElementById("answer").addEventListener("keydown",e=>{if(e.key==="Enter"){if(document.getElementById("next").classList.contains("hidden"))checkTyped();else nextSessionQuestion()}});
+buildTables();renderHome();
+</script></body></html>
