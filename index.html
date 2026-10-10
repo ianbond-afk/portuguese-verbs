@@ -40,7 +40,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:7px 4px
 <div class="mastery"><div><b id="mNew">0</b>New</div><div><b id="mLearning">0</b>Learning</div><div><b id="mFamiliar">0</b>Familiar</div><div><b id="mMastered">0</b>Mastered</div></div>
 <p class="muted tiny">Correct answers build mastery. Errors make that exact verb + tense + person appear more often.</p>
 </div>
-<div class="card"><h3 style="margin-top:0">Learning path</h3><div id="levelGrid" class="levelgrid"></div></div>
+<div class="card"><h3 style="margin-top:0">Learning path</h3><label style="display:flex;gap:9px;align-items:center;margin:10px 0 14px;font-size:.94rem"><input type="checkbox" id="includePrevious" style="width:19px;height:19px" onchange="setIncludePrevious(this.checked)"> Include questions from previous levels</label><p class="muted tiny">Unchecked: practise only the selected level. Checked: mix in material from every earlier level too. This applies to Daily Practice and level sessions.</p><div id="levelGrid" class="levelgrid"></div></div>
 </section>
 
 <section id="quiz" class="hidden">
@@ -50,7 +50,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:7px 4px
 <div id="simplePrompt" class="big"><span id="verb"></span> → <span id="person"></span></div>
 <div id="sentencePrompt" class="sentence hidden"></div><div id="verbMeaning" class="muted" style="margin:-2px 0 12px;font-size:.95rem"></div>
 <div id="choices"></div><div id="typeArea" class="hidden"><input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the verb…"><button class="primary" style="width:100%;margin-top:9px" onclick="checkTyped()">Check</button></div>
-<div id="feedback" class="feedback"></div><div id="translationNote" class="teach hidden" style="background:#eef6ff"></div><div id="conjugationNote" class="teach hidden"></div><div id="teachNote" class="teach hidden"></div><button id="next" class="primary hidden" style="width:100%" onclick="nextSessionQuestion()">Next question</button>
+<div id="feedback" class="feedback"></div><button id="next" class="primary hidden" style="width:100%;margin:4px 0 10px" onclick="nextSessionQuestion()">Next question</button><div id="translationNote" class="teach hidden" style="background:#eef6ff"></div><div id="conjugationNote" class="teach hidden"></div><div id="teachNote" class="teach hidden"></div>
 </div><button class="ghost" style="width:100%" onclick="endSession()">End session</button>
 </section>
 
@@ -79,7 +79,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:7px 4px
 <p id="helpMeaning" style="line-height:1.55"></p><h4>English examples</h4><ul id="helpExamples" style="line-height:1.7"></ul>
 <h4>Portuguese example</h4><p id="helpPt" style="font-weight:700"></p>
 <button class="primary" style="width:100%" onclick="closeHelp()">Got it</button></div></div>
-<div class="footer">Version 8 • All progress stays on this device in your browser.</div>
+<div class="footer">Version 9 • All progress stays on this device in your browser.</div>
 </main><script>
 const persons=["eu","tu","ele/ela/você","nós","vocês","eles/elas"];
 const regular=[
@@ -152,7 +152,7 @@ const levels=[
 {n:1,title:"Present: regular patterns",desc:"Build the basic -ar, -er and -ir present-tense endings.",t:["present"],irr:false,typed:.25},
 {n:2,title:"Present: everyday verbs",desc:"Strengthen the present and introduce ser, estar, ter and ir.",t:["present"],irr:["ser","estar","ter","ir"],typed:.5},
 {n:3,title:"Pretérito Perfeito",desc:"Learn completed-past endings, then meet common irregular past forms.",t:["perfect"],irr:true,typed:.45},
-{n:4,title:"Pretérito Imperfeito",desc:"Practise habitual/background past forms and contrast them with the perfeito.",t:["imperfect","perfect"],irr:true,typed:.55},
+{n:4,title:"Pretérito Imperfeito",desc:"Practise habitual and background past forms only.",t:["imperfect"],irr:true,typed:.55},
 {n:5,title:"Everyday constructions",desc:"Practise ir + infinitive for the future and costumar + infinitive for habitual actions.",t:["irFuture","costumar"],irr:true,typed:.6},
 {n:6,title:"Future & Conditional",desc:"Add the formal/simple futuro and condicional while continuing earlier revision.",t:["future","conditional"],irr:true,typed:.6},
 {n:7,title:"Mixed everyday verbs",desc:"Mix the core tenses and everyday constructions.",t:["present","perfect","imperfect","irFuture","costumar","future","conditional"],irr:true,typed:.7},
@@ -308,6 +308,7 @@ function teachingNote(q,wasCorrect){
  return `<b>${intro}</b>${x.why}<br><br>${x.clue}<br><br>${endingLesson(q)}<br><br><b>Memory cue:</b> ${x.tip}`;
 }
 let state=JSON.parse(localStorage.getItem("ptTrainerV2")||'{"level":1,"mastery":{},"sessions":0}');
+if(typeof state.includePrevious!=="boolean")state.includePrevious=false;
 let session=null,current=null;
 
 function key(v,t,p){return v+"|"+t+"|"+p}
@@ -360,11 +361,19 @@ function nextSessionQuestion(){session.i++;if(session.i>=session.questions.lengt
 function beginSession(lv,count,kind){
  session={lv,i:0,correct:0,kind,questions:[]};for(let i=0;i<count;i++)session.questions.push(makeQuestion(lv,kind==="daily"&&i%3===0));showTab("quiz");renderQuestion()
 }
-function startDaily(){let lv=levels[state.level-1];beginSession(lv,15,"daily")}
-function startLevel(){beginSession(levels[state.level-1],15,"level")}
+function levelConfig(n){
+ let selected=levels[n-1];
+ if(!state.includePrevious)return selected;
+ let earlier=levels.slice(0,n), t=[...new Set(earlier.flatMap(x=>x.t))];
+ let irr=earlier.some(x=>x.irr===true)?true:[...new Set(earlier.flatMap(x=>Array.isArray(x.irr)?x.irr:[]))];
+ return {...selected,t,irr};
+}
+function setIncludePrevious(checked){state.includePrevious=checked;saveState()}
+function startDaily(){beginSession(levelConfig(state.level),15,"daily")}
+function startLevel(){beginSession(levelConfig(state.level),15,"level")}
 function practiseLevel(n){
  if(n>state.level)return;
- beginSession(levels[n-1],15,n===state.level?"level":"review");
+ beginSession(levelConfig(n),15,n===state.level?"level":"review");
 }
 function startFree(){
  let tv=document.getElementById("tense").value,ts=tv==="mixed"?["present","perfect","imperfect","future","conditional","irFuture","costumar","subjPresent","personalInf"]:[tv],iv=document.getElementById("irregulars").checked;
@@ -385,6 +394,7 @@ function finishSession(){
 }
 function endSession(){if(confirm("End this practice session?")){session=null;renderHome();showTab("home")}}
 function renderHome(){
+ document.getElementById("includePrevious").checked=state.includePrevious;
  let lv=levels[state.level-1];document.getElementById("levelTitle").textContent="Level "+lv.n+" — "+lv.title;document.getElementById("levelDesc").textContent=lv.desc;
  let pct=Math.round((state.level-1)/levels.length*100);document.getElementById("coursePct").textContent=pct+"%";document.getElementById("courseBar").style.width=pct+"%";
  let counts=[0,0,0,0];Object.values(state.mastery).forEach(v=>{if(v===0)counts[0]++;else if(v<=2)counts[1]++;else if(v<=4)counts[2]++;else counts[3]++});
