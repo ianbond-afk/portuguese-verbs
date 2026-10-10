@@ -7,7 +7,7 @@
 :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#f5f7f6}
 *{box-sizing:border-box}body{margin:0}.app{max-width:680px;margin:auto;min-height:100vh;padding:18px 16px 42px}
 h1{font-size:1.65rem;margin:.25rem 0}.sub,.muted{color:#667085}.sub{margin:0 0 16px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 3px 18px #00000012;margin:14px 0}
-button,input,select{font:inherit}button{border:0;border-radius:13px;padding:13px 14px;font-weight:750;cursor:pointer}.primary{background:#176b4d;color:#fff}.secondary{background:#e9f4ef;color:#155b43}.ghost{background:#f3f4f6;color:#344054}
+button,input,select{font:inherit}button{border:0;border-radius:13px;padding:13px 14px;font-weight:750;cursor:pointer}.primary{background:#176b4d;color:#fff}.secondary{background:#e9f4ef;color:#155b43}.checkButton{background:#dbeafe;color:#1e40af;border:2px solid #93c5fd}.checkButton.used{background:#e5e7eb;color:#6b7280;border-color:#d1d5db}.ghost{background:#f3f4f6;color:#344054}
 .row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}label{font-size:.82rem;font-weight:700;display:block;margin:0 0 5px}
 select,input{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:12px;background:#fff}.tabs{display:flex;gap:7px}.tabs button{flex:1;padding:11px 7px}.active{outline:2px solid #176b4d}
 .stats{display:flex;gap:7px}.stat{flex:1;text-align:center;background:#fff;padding:9px 4px;border-radius:12px;box-shadow:0 2px 8px #0000000b}.stat b{display:block;font-size:1.12rem}
@@ -49,7 +49,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:7px 4px
 <div id="promptMeta" class="muted"></div><div id="questionLabel">Conjugate:</div>
 <div id="simplePrompt" class="big"><span id="verb"></span> → <span id="person"></span></div>
 <div id="sentencePrompt" class="sentence hidden"></div><div id="verbMeaning" class="muted" style="margin:-2px 0 12px;font-size:.95rem"></div>
-<div id="choices"></div><div id="typeArea" class="hidden"><input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the verb…"><button class="primary" style="width:100%;margin-top:9px" onclick="checkTyped()">Check</button></div>
+<div id="choices"></div><div id="typeArea" class="hidden"><input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the verb…"><button id="checkButton" class="checkButton" style="width:100%;margin-top:9px" onclick="checkTyped()">Check</button></div>
 <div id="feedback" class="feedback"></div><button id="next" class="primary hidden" style="width:100%;margin:4px 0 10px" onclick="nextSessionQuestion()">Next question</button><div id="translationNote" class="teach hidden" style="background:#eef6ff"></div><div id="conjugationNote" class="teach hidden"></div><div id="teachNote" class="teach hidden"></div>
 </div><button class="ghost" style="width:100%" onclick="endSession()">End session</button>
 </section>
@@ -309,6 +309,7 @@ function teachingNote(q,wasCorrect){
 }
 let state=JSON.parse(localStorage.getItem("ptTrainerV2")||'{"level":1,"mastery":{},"sessions":0}');
 if(typeof state.includePrevious!=="boolean")state.includePrevious=false;
+if(!state.levelAccuracy || typeof state.levelAccuracy!=="object")state.levelAccuracy={};
 let session=null,current=null;
 
 function key(v,t,p){return v+"|"+t+"|"+p}
@@ -334,7 +335,7 @@ function makeQuestion(lv,forceWeak=false){
  return c;
 }
 function renderQuestion(){
- current=session.questions[session.i];document.getElementById("feedback").textContent="";document.getElementById("feedback").className="feedback";document.getElementById("teachNote").innerHTML="";document.getElementById("teachNote").classList.add("hidden");document.getElementById("translationNote").innerHTML="";document.getElementById("translationNote").classList.add("hidden");document.getElementById("conjugationNote").innerHTML="";document.getElementById("conjugationNote").classList.add("hidden");document.getElementById("next").classList.add("hidden");
+ current=session.questions[session.i];document.getElementById("feedback").textContent="";document.getElementById("feedback").className="feedback";document.getElementById("teachNote").innerHTML="";document.getElementById("teachNote").classList.add("hidden");document.getElementById("translationNote").innerHTML="";document.getElementById("translationNote").classList.add("hidden");document.getElementById("conjugationNote").innerHTML="";document.getElementById("conjugationNote").classList.add("hidden");document.getElementById("next").classList.add("hidden");let checkButton=document.getElementById("checkButton");checkButton.classList.remove("used");checkButton.disabled=false;
  document.getElementById("qProgress").textContent=(session.i+1)+"/"+session.questions.length;document.getElementById("qCorrect").textContent=session.correct;document.getElementById("qScore").textContent=session.i?Math.round(session.correct/session.i*100)+"%":"—";
  document.getElementById("promptMeta").textContent=tenseNames[current.t];document.getElementById("verb").textContent=current.v;document.getElementById("person").textContent=persons[current.p];document.getElementById("verbMeaning").innerHTML=`<b>${current.v}</b> — ${verbMeanings[current.v]||""}`;
  let sp=document.getElementById("simplePrompt"),sent=document.getElementById("sentencePrompt");
@@ -349,17 +350,18 @@ function grade(ans,btn){
  let ok=ans.trim().toLocaleLowerCase("pt-PT")===current.a.toLocaleLowerCase("pt-PT"),k=key(current.v,current.t,current.p),m=state.mastery[k]||0;
  if(ok){session.correct++;state.mastery[k]=Math.min(5,m+1);if(btn)btn.classList.add("correct");setFeedback("✓ Correct — "+current.a,true)}
  else{state.mastery[k]=Math.max(0,m-1);if(btn)btn.classList.add("wrong");setFeedback("✗ Correct answer: "+current.a,false)}
+ if(current.typed){let checkButton=document.getElementById("checkButton");checkButton.classList.add("used");checkButton.disabled=true;}
  saveState();
  let tr=document.getElementById("translationNote");tr.innerHTML=`<b>${portugueseAnswerPhrase(current)}</b> &nbsp;→&nbsp; <b>${englishTranslation(current)}</b>`;tr.classList.remove("hidden");
  let conj=document.getElementById("conjugationNote");conj.innerHTML=conjugationReminder(current);conj.classList.remove("hidden");
  let note=document.getElementById("teachNote");note.innerHTML=teachingNote(current,ok);note.classList.remove("hidden");
  document.querySelectorAll(".choice").forEach(b=>{b.disabled=true;if(b.textContent===current.a)b.classList.add("correct")});document.getElementById("next").classList.remove("hidden");
 }
-function checkTyped(){grade(document.getElementById("answer").value)}
+function checkTyped(){if(document.getElementById("checkButton").disabled)return;grade(document.getElementById("answer").value)}
 function setFeedback(s,ok){let f=document.getElementById("feedback");f.textContent=s;f.classList.add(ok?"good":"bad")}
 function nextSessionQuestion(){session.i++;if(session.i>=session.questions.length){finishSession();return}renderQuestion()}
 function beginSession(lv,count,kind){
- session={lv,i:0,correct:0,kind,questions:[]};for(let i=0;i<count;i++)session.questions.push(makeQuestion(lv,kind==="daily"&&i%3===0));showTab("quiz");renderQuestion()
+ session={lv,i:0,correct:0,kind,levelNumber:(kind==="level"||kind==="review")?lv.n:null,questions:[]};for(let i=0;i<count;i++)session.questions.push(makeQuestion(lv,kind==="daily"&&i%3===0));showTab("quiz");renderQuestion()
 }
 function levelConfig(n){
  let selected=levels[n-1];
@@ -388,6 +390,7 @@ function startMistakes(){
 }
 function finishSession(){
  let pct=Math.round(session.correct/session.questions.length*100);state.sessions++;
+ if(session.levelNumber){let k=String(session.levelNumber),r=state.levelAccuracy[k]||{correct:0,total:0};r.correct+=session.correct;r.total+=session.questions.length;state.levelAccuracy[k]=r;}
  if((session.kind==="daily"||session.kind==="level")&&pct>=80&&state.level<levels.length){state.level++;saveState();alert("Session complete: "+pct+"%.\n\nGreat work — Level "+state.level+" is now your current level.")}
  else{saveState();alert("Session complete: "+pct+"% ("+session.correct+"/"+session.questions.length+").")}
  session=null;renderHome();showTab("home")
@@ -402,7 +405,8 @@ function renderHome(){
  document.getElementById("levelGrid").innerHTML=levels.map(l=>{
  let locked=l.n>state.level;
  let badge=l.n===state.level?'<span class="pill" style="margin-top:7px">Current level</span>':l.n<state.level?'<span class="pill" style="margin-top:7px">Tap to practise again</span>':'<span class="pill" style="margin-top:7px;background:#eee;color:#777">Locked</span>';
- return `<div class="level ${l.n===state.level?"current":""} ${locked?"locked":""}" ${locked?"":`onclick="practiseLevel(${l.n})" style="cursor:pointer"`}><b>${l.n}. ${l.title}</b><div class="muted tiny">${l.desc}</div>${badge}</div>`;
+ let accuracy=state.levelAccuracy[String(l.n)];let accuracyText=accuracy&&accuracy.total?`<div class="muted tiny" style="margin-top:7px"><b>Average accuracy: ${Math.round(accuracy.correct/accuracy.total*100)}%</b> · ${accuracy.total} questions</div>`:`<div class="muted tiny" style="margin-top:7px">Average accuracy: Not yet recorded</div>`;
+ return `<div class="level ${l.n===state.level?"current":""} ${locked?"locked":""}" ${locked?"":`onclick="practiseLevel(${l.n})" style="cursor:pointer"`}><b>${l.n}. ${l.title}</b><div class="muted tiny">${l.desc}</div>${accuracyText}${badge}</div>`;
 }).join("")
 }
 function showTab(x){["home","quiz","practice","learn"].forEach(id=>document.getElementById(id).classList.toggle("hidden",id!==x));["home","practice","learn"].forEach(id=>{let e=document.getElementById(id+"Tab");if(e)e.classList.toggle("active",id===x)})}
